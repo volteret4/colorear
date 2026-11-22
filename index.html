@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Láminas para colorear</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🖍️</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>🖍️ Láminas</h1>
+  <div class="random" id="randomBar" hidden>
+    <label>Láminas <input id="rndCount" type="number" min="1" max="300" value="10"></label>
+    <label>Copias <input id="rndCopies" type="number" min="1" max="20" value="1"></label>
+    <button id="btnRandom" class="accent">🎲 Aleatorio</button>
+  </div>
+  <button id="btnSource" class="link" hidden>cambiar origen</button>
+</header>
+
+<div id="setup" class="setup" hidden>
+  <h2>¿De dónde saco las láminas?</h2>
+  <p>Pega el enlace de la carpeta de MEGA (la que contiene <code>index.json</code>). Se guarda solo en este navegador.</p>
+  <form id="megaForm">
+    <input id="megaUrl" type="url" placeholder="https://mega.nz/folder/XXXXXXXX#clave" required>
+    <button class="primary">Conectar</button>
+  </form>
+  <p class="hint">También puedes abrir la carpeta ya preparada desde tu disco:
+    <button id="btnLocal" class="link">elegir carpeta local</button></p>
+  <input id="localInput" type="file" webkitdirectory multiple hidden>
+  <p id="setupStatus" class="status"></p>
+</div>
+
+<main id="app" hidden>
+  <aside id="books">
+    <div class="aside-head">
+      <strong>Libros</strong>
+      <span class="mini">
+        <button id="booksAll" class="link">todos</button> ·
+        <button id="booksNone" class="link">ninguno</button>
+      </span>
+    </div>
+    <p class="hint">Los marcados entran en el aleatorio.</p>
+    <ul id="bookList"></ul>
+  </aside>
+
+  <section id="viewer">
+    <div class="view-head">
+      <h2 id="bookTitle"></h2>
+      <label class="toggle"><input id="showHidden" type="checkbox"> mostrar portadas y soluciones</label>
+    </div>
+    <div id="grid"></div>
+  </section>
+
+  <aside id="cart">
+    <div class="aside-head">
+      <strong>Para imprimir <span id="cartCount"></span> <span id="cartToggle">▲ ver</span></strong>
+      <button id="btnClear" class="link">vaciar</button>
+    </div>
+    <ul id="cartList"></ul>
+    <details class="opts">
+      <summary>Opciones</summary>
+      <label>Papel
+        <select id="optPaper"><option value="a4">A4</option><option value="letter">Carta</option></select>
+      </label>
+      <label>Margen (mm) <input id="optMargin" type="number" min="0" max="30" value="5"></label>
+      <label class="toggle"><input id="optShuffle" type="checkbox"> mezclar el orden</label>
+    </details>
+    <button id="btnMake" class="primary big" disabled>🖨️ Crear PDF</button>
+    <progress id="makeProgress" hidden></progress>
+    <div id="makeStatus" class="status"></div>
+  </aside>
+</main>
+
+<dialog id="preview">
+  <div class="preview-img"><img id="pvImg" alt=""></div>
+  <div class="preview-bar">
+    <button id="pvPrev" aria-label="Anterior">◀</button>
+    <span id="pvLabel"></span>
+    <button id="pvNext" aria-label="Siguiente">▶</button>
+    <button id="pvAdd" class="primary">+ Añadir</button>
+    <button id="pvClose">Cerrar</button>
+  </div>
+</dialog>
+
+<script src="vendor/pdf-lib.min.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
