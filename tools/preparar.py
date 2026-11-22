@@ -5,7 +5,7 @@ Uso: python3 tools/preparar.py <carpeta_pdfs> <carpeta_salida> [--jobs N]
 
 Genera en <carpeta_salida>:
   index.json             lista de libros y páginas
-  <libro>/p001.jpg ...   cada página lista para imprimir (fondo blanqueado)
+  <libro>/p001.jpg ...   cada página lista para imprimir (papel blanco y líneas reforzadas)
   <libro>/thumbs.jpg     sprite con las miniaturas del libro
 Los libros ya procesados se saltan (se puede relanzar sin perder trabajo).
 """
@@ -20,13 +20,14 @@ import unicodedata
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageFilter
 
 LONG_SIDE = 2200          # px del lado largo (~190 ppp en A4)
-QUALITY = 82
+QUALITY = 88
 THUMB_W, THUMB_H = 160, 226
 SPRITE_COLS = 10
-WHITE, BLACK = 222, 18    # niveles para blanquear el papel del escaneo
+GAMMA = 1.8               # oscurece las líneas grises finas
+GRAY_CHROMA = 45          # por debajo de esto un píxel se considera gris
 
 
 def slugify(name: str) -> str:
@@ -39,7 +40,27 @@ def title_of(path: Path) -> str:
     return re.sub(r"\s+", " ", path.stem.replace("_", " ")).strip()
 
 
-LUT = [max(0, min(255, round((v - BLACK) * 255 / (WHITE - BLACK)))) for v in range(256)] * 3
+def enhance(img: Image.Image) -> Image.Image:
+    """Pasa el papel a blanco y oscurece las líneas sin tocar los colores ni las zonas rellenas."""
+    lum = img.convert("L")
+    h = lum.histogram()
+    half, acc, paper = sum(h) / 2, 0, 255
+    for v in range(256):
+        acc += h[v]
+        if acc >= half:
+            paper = v
+            break
+    white = max(120, min(255, paper - 6))
+    stretch = img.point([round(255 * min(1.0, x / white)) for x in range(256)] * 3)
+    dark = img.point([round(255 * min(1.0, x / white) ** GAMMA) for x in range(256)] * 3)
+    r, g, b = img.split()
+    chroma = ImageChops.subtract(
+        ImageChops.lighter(ImageChops.lighter(r, g), b), ImageChops.darker(ImageChops.darker(r, g), b)
+    )
+    gray = chroma.point(lambda x: 255 if x < GRAY_CHROMA else 0).filter(ImageFilter.MinFilter(3))
+    # trazos finos: tienen papel claro a pocos píxeles (las muestras de color rellenas no)
+    thin = lum.filter(ImageFilter.MaxFilter(11)).point(lambda x: 255 if x > white - 25 else 0)
+    return Image.composite(dark, stretch, ImageChops.multiply(gray, thin))
 
 
 def color_ratio(img: Image.Image) -> float:
@@ -70,8 +91,8 @@ def process_chunk(pdf: Path, dest: Path, first: int, last: int, tmproot: Path) -
             n = int(raw.stem.split("-")[1])
             img = Image.open(raw).convert("RGB")
             ratio = color_ratio(img)
-            img = img.point(LUT)
-            img.save(dest / f"p{n:03d}.jpg", "JPEG", quality=QUALITY, optimize=True, progressive=True)
+            img = enhance(img)
+            img.save(dest / f"p{n:03d}.jpg", "JPEG", quality=QUALITY, subsampling=0, optimize=True, progressive=True)
             th = img.copy()
             th.thumbnail((THUMB_W, THUMB_H), Image.LANCZOS)
             res.append((n, img.width, img.height, ratio, th))
