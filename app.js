@@ -32,8 +32,15 @@ async function idbPut(k, v) {
 class MegaSource {
   constructor(url) { this.url = url.trim(); this.id = 'mega:' + this.url.split('#')[0]; }
   async init() {
-    const root = MegaFile.fromURL(this.url);
-    await root.loadAttributes();
+    let root;
+    try {
+      root = MegaFile.fromURL(this.url);
+      await root.loadAttributes();
+    } catch (err) {
+      if (/decrypt/i.test(err.message)) throw new Error('la clave del enlace (lo que va tras «#») no corresponde a esa carpeta. Vuelve a copiar el enlace completo desde MEGA.');
+      if (/Invalid argument|ENOENT|-9|-2/.test(err.message)) throw new Error('MEGA no encuentra esa carpeta. ¿Está bien copiado el enlace?');
+      throw err;
+    }
     const files = new Map();
     const walk = (node, prefix) => {
       for (const c of node.children || []) {
